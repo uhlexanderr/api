@@ -9,7 +9,7 @@ const express = require("express");
 const router = express.Router();
 
 // Create an order
-router.post("/", verifyToken, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const newOrder = new Order(req.body);
     const savedOrder = await newOrder.save();
@@ -27,7 +27,7 @@ router.post("/", verifyToken, async (req, res) => {
 });
 
 // Update an order
-router.put("/:id", verifyTokenAndAdmin, async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const updatedOrder = await Order.findByIdAndUpdate(
       req.params.id, 
@@ -41,7 +41,7 @@ router.put("/:id", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Delete an order
-router.delete("/:id", verifyTokenAndAdmin, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     await Order.findByIdAndDelete(req.params.id);
     res.status(200).json("Order has been deleted!");
@@ -50,18 +50,22 @@ router.delete("/:id", verifyTokenAndAdmin, async (req, res) => {
   }
 });
 
-// Get orders by user
-router.get("/find/:userId", verifyTokenAndAuthorization, async (req, res) => {
+//get order by id
+router.get('/find/:userId', async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.params.userId });
+    const { userId } = req.params;
+    const orders = await Order.find({ userId });
     res.status(200).json(orders);
   } catch (err) {
-    res.status(500).json(err);
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching orders' });
   }
 });
 
+module.exports = router;
+
 // Get all orders
-router.get("/", verifyTokenAndAdmin, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const orders = await Order.find();
     res.status(200).json(orders);
@@ -71,7 +75,7 @@ router.get("/", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Get monthly income
-router.get("/income", verifyTokenAndAdmin, async (req, res) => {
+router.get("/income", async (req, res) => {
   try {
     const productId = req.query.productId; // Update the query parameter access
     const date = new Date();
@@ -102,6 +106,84 @@ router.get("/income", verifyTokenAndAdmin, async (req, res) => {
     ]);
 
     res.status(200).json(income);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "An error occurred" });
+  }
+});
+
+// Get total number of orders
+router.get("/total", async (req, res) => {
+  try {
+    const totalOrders = await Order.countDocuments();
+    res.status(200).json({ total: totalOrders });
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+module.exports = router;
+
+// Get an order by ID
+router.get("/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+    res.status(200).json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error fetching order" });
+  }
+});
+
+// Cancel an order by orderId
+router.put("/cancel/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the order by orderId
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Check if the order is already canceled
+    if (order.status === "Canceled") {
+      return res.status(400).json({ error: "Order is already canceled" });
+    }
+
+    // Update the status to "Canceled"
+    order.status = "Canceled";
+    const updatedOrder = await order.save();
+
+    res.status(200).json(updatedOrder);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error canceling order" });
+  }
+});
+
+// Get total sales
+router.get("/sales/total", async (req, res) => {
+  try {
+    const totalSales = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    if (totalSales.length > 0) {
+      res.status(200).json(totalSales[0].totalSales);
+    } else {
+      res.status(200).json(0); // No sales data available
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "An error occurred" });

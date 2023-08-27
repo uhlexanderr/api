@@ -1,21 +1,26 @@
 const mongoose = require("mongoose");
 
 const CartSchema = new mongoose.Schema(
-    {
-        userID: { type: String, required: true },
-        products: [
-            {
-                productId: {
-                    type: String,
-                },
-                quantity: {
-                    type: Number,
-                    default: 1,
-                },
-            },
-        ],
-    },
-    {timestamps: true }
-    );
+  {
+    userID: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    products: [
+      {
+        productId: {
+          type: String,
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+        },
+      },
+    ],
+  },
+  { timestamps: true }
+);
 
-    module.exports = mongoose.model("Cart", CartSchema);
+// Method to clear the cart
+CartSchema.methods.clearCart = function () {
+  this.products = [];
+};
+
+module.exports = mongoose.model("Cart", CartSchema);

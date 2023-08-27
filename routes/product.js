@@ -91,4 +91,14 @@ router.get("/", async (req, res) => {
 
 });
 
+// Get total number of products
+router.get("/total", async (req, res) => {
+  try {
+      const totalProducts = await Product.countDocuments();
+      res.status(200).json({ total: totalProducts });
+  } catch (err) {
+      res.status(500).json(err);
+  }
+});
+
 module.exports = router;
